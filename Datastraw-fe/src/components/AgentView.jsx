@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   MessageSquare,
   Sparkles,
@@ -26,6 +26,7 @@ export default function AgentView({ isAgentLoggedIn, onOpenLogin }) {
   const [approving, setApproving] = useState(false);
   const [approveSuccessMsg, setApproveSuccessMsg] = useState(null);
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const loadedDraftIdRef = useRef(null);
 
   // Load conversations list
   const loadConversations = async (silent = false) => {
@@ -54,14 +55,14 @@ export default function AgentView({ isAgentLoggedIn, onOpenLogin }) {
       const data = await fetchConversationById(convId);
       setActiveData(data);
       if (data.activeDraft) {
-        // Only overwrite draft input if it's a new draft or input is empty
-        setDraftInput((prev) => {
-          if (!prev || data.activeDraft._id !== activeData?.activeDraft?._id) {
-            return data.activeDraft.draftText || '';
-          }
-          return prev;
-        });
+        // Only initialize draft input if this draft hasn't been loaded yet
+        // Never overwrite if user is currently editing, clearing, or modifying it
+        if (loadedDraftIdRef.current !== data.activeDraft._id) {
+          loadedDraftIdRef.current = data.activeDraft._id;
+          setDraftInput(data.activeDraft.draftText || '');
+        }
       } else {
+        loadedDraftIdRef.current = null;
         setDraftInput('');
       }
     } catch (err) {
@@ -122,6 +123,8 @@ export default function AgentView({ isAgentLoggedIn, onOpenLogin }) {
         draftInput.trim(),
         activeData?.activeDraft?._id
       );
+      loadedDraftIdRef.current = null;
+      setDraftInput('');
       setApproveSuccessMsg('Reply approved and added to customer conversation!');
       setTimeout(() => setApproveSuccessMsg(null), 3500);
 
@@ -167,6 +170,9 @@ export default function AgentView({ isAgentLoggedIn, onOpenLogin }) {
                   <button
                     key={conv._id}
                     onClick={() => {
+                      if (conv._id !== selectedConvId) {
+                        loadedDraftIdRef.current = null;
+                      }
                       setSelectedConvId(conv._id);
                       setMobileShowChat(true);
                     }}
