@@ -1,25 +1,25 @@
 # Verdant & Co — AI-Assisted Customer Support Platform
 
-> A production-grade MVP built for **Datastraw Technologies' Take-Home Assessment (Software Engineer, AI & Product Engineering)**.
+> **Take-Home Assessment for Datastraw Technologies — Software Engineer, AI & Product Engineering**
 
-Verdant & Co is an online vegan skincare brand in India. This platform receives incoming customer messages via an HMAC-SHA256 verified webhook, generates draft replies using LLM grounded in the brand's policy knowledge base, and empowers human support agents to review, edit, and approve replies.
+Verdant & Co is a fictional online vegan skincare brand in India. Customers message the brand on chat apps with inquiries regarding order status, returns, and ingredients. This production-grade MVP provides a full-stack, human-in-the-loop support co-pilot: customer messages are received via an HMAC-SHA256 verified webhook, AI drafts suggested replies grounded strictly in official brand policies using Google Gemini (`gemini-flash-lite-latest`), and human support agents review, edit, and approve replies before they are committed to customer conversations.
 
 ---
 
-## Architecture Overview
+## 🛠 Tech Stack & Architecture
 
-- **Frontend (`Datastraw-fe`)**: React 19, Vite, Tailwind CSS 4, Lucide Icons. Features an instant toggle between **Customer View** (WhatsApp chat simulator with sample query chips) and **Agent View** (authenticated dashboard with conversation list, message history, and editable AI draft card).
+- **Frontend (`Datastraw-fe`)**: React 19, Vite, Tailwind CSS 4, Lucide Icons. Features an instant toggle between **Customer View** (WhatsApp chat simulator with sample query chips) and **Agent View** (authenticated dashboard with conversation list, message history, and editable AI draft card). Fully mobile-responsive with single-pane drawer navigation on small screens.
 - **Backend (`Datastraw-se`)**: Node.js, Express, MongoDB (Mongoose ORM with relational schema referencing: Customer, Conversation, Message, AIDraft).
-- **AI Engine**: Google Gemini API (`gemini-3.8-flash`) with strict system instructions grounded in the official Verdant & Co Knowledge Base, coupled with deterministic policy fallbacks.
+- **AI Engine**: Google Gemini API (`gemini-flash-lite-latest`) with strict system instructions grounded in the official Verdant & Co Knowledge Base, coupled with deterministic policy fallbacks.
 - **Webhook Security**: Raw-body HMAC-SHA256 signature verification matching `X-Signature: sha256=<hex>` against secret `verdant-demo-secret-2026`.
 
 ---
 
-## How to Run Locally
+## 🚀 How to Run Locally
 
 ### Prerequisites
 - Node.js v18+ (tested on Node v24)
-- MongoDB instance (Local `mongodb://127.0.0.1:27017` or MongoDB Atlas)
+- MongoDB instance (Local `mongodb://127.0.0.1:27017` or MongoDB Atlas connection string)
 
 ### 1. Backend Setup
 ```bash
@@ -30,10 +30,10 @@ npm install
 cp .env.example .env
 # Ensure GEMINI_API_KEY and MONGODB_URI are configured in .env
 
-# Seed sample customers and initial conversation
+# Seed sample customers (Aisha Khan, Rahul Sharma, Priya Patel)
 npm run seed
 
-# Start server (runs on port 5000)
+# Start backend server (runs on port 5000)
 npm start
 # or development watch mode:
 npm run dev
@@ -53,27 +53,28 @@ npm run dev
 ```
 
 ### 3. Test Webhook (Automated Verification)
-In `Datastraw-se`, run our automated test suite that tests valid HMAC signatures, invalid signatures (401), and missing signatures (401):
+In `Datastraw-se`, run our automated test suite that verifies valid HMAC signatures (200 OK), invalid signatures (401), and missing signatures (401):
 ```bash
 npm run test:webhook
 ```
 
 ---
 
-## Agent Credentials (For Testing)
+## 🔑 Agent Sign-In Credentials (For Testing)
 - **Portal URL**: Switch toggle to **Agent View** at the top of the app
 - **Email**: `agent@verdant.co`
 - **Password**: `verdant-agent-2026`
 
 ---
 
-## Main Decisions & What Was Left Out
+## 💡 Main Decisions & What Was Left Out
 
 ### Key Decisions Made:
-1. **Schema Design**: Modeled relationships using explicit references between `Customer` (1:1 with open `Conversation`), `Conversation` (1:N with `Message`), and `Message` (1:1 with `AIDraft`). Ensures clean relational integrity and prevents duplicate open conversations per customer.
-2. **Dual-View Toggle with Live Ingestion**: Built a Customer View that triggers the exact same message-processing pipeline as the webhook. Added quick-click chips for all 5 sample queries from the prompt for instant evaluation.
-3. **Resilient AI Pipeline**: LLM calls are wrapped with a 5-second timeout and grounded fallback. If the external LLM provider experiences network latency or rate-limiting, the system automatically uses a policy-grounded draft rather than failing the webhook.
+1. **Schema Design**: Modeled relationships using explicit references between `Customer` (1:1 with open `Conversation`), `Conversation` (1:N with `Message`), and `Message` (1:1 with `AIDraft`). Atomic upserts (`findOneAndUpdate`) ensure customers have exactly one open conversation thread without collision.
+2. **Dual-View Toggle with Live Ingestion**: Built an interactive Customer View that routes messages through the exact same processing pipeline as the webhook. Added quick-click chips for all 5 sample queries from the prompt for instant evaluation.
+3. **Resilient AI Pipeline**: LLM calls are wrapped with structured prompt guardrails and a grounded fallback mechanism. If the external LLM provider encounters rate-limiting or latency spikes, the system automatically provides a policy-grounded draft rather than failing the webhook.
 4. **Security**: Webhook HMAC-SHA256 verification utilizes constant-time comparison (`crypto.timingSafeEqual`) on the raw unparsed body to prevent timing attacks.
+5. **Mobile-First UX**: Converted desktop split-pane into a fluid single-pane WhatsApp/Zendesk mobile flow with smooth back-button transitions and swipeable prompt chips.
 
 ### What Was Left Out Due to Time Limits:
 1. **WebSockets / Server-Sent Events**: Used lightweight 3-second polling instead of full Socket.io infrastructure to ensure zero-dependency deployment simplicity within the 4-5 hour budget.
@@ -82,29 +83,32 @@ npm run test:webhook
 
 ---
 
-## AI Reflection: Where It Helped & Where It Got Something Wrong
+## 🤖 AI Reflection: Where It Helped & Where It Got Something Wrong
 
-- **Where AI Helped**: Accelerating boilerplate schema modeling, writing mock HMAC test scripts, and formulating empathetic, policy-compliant customer service reply prompts.
-- **Where AI Got Something Wrong**: In initial test prompts regarding customer allergic reactions, standard LLMs tend to over-prescribe medical advice (e.g., suggesting antihistamines or topical hydrocortisone). We explicitly constrained the system prompt to forbid medical advice, prioritize customer safety (stop usage immediately, consult a doctor), and direct them to return/refund assistance.
+- **Where AI Helped**: Accelerating boilerplate Express route and schema setup, constructing mock HMAC test scripts, and formulating empathetic, policy-compliant customer service reply prompts.
+- **Where AI Got Something Wrong**: In initial test prompts regarding customer allergic reactions, standard LLMs tend to over-prescribe medical advice (e.g., suggesting antihistamines or topical hydrocortisone). We explicitly constrained the system prompt to forbid medical advice, prioritize customer safety (stop usage immediately, consult a doctor), and direct them to return/refund assistance. Additionally, initial AI suggestions placed `scrollIntoView()` on polling triggers, which caused the viewport to jump; we corrected this by scoping internal container scrolling exclusively to genuine new message events.
 
 ---
 
-## Answers to the Two Mandatory Questions
+## 📝 Answers to the Two Mandatory Questions
 
 ### Question 1: A customer message arrives at 2 a.m. and something in your system fails. What does the agent see the next morning, and how would you find out what went wrong?
 
 **What the agent sees**:
-The agent opens the dashboard and sees the customer's conversation prioritized at the top of the list with a distinct alert badge: `[Manual Review Required: AI Draft Pending]`. The customer's message is preserved with full fidelity in the chat history, but the draft input box shows the raw customer query and an actionable notice rather than a blank or crashing screen. The customer view never sees any internal failure.
+The agent opens the dashboard and sees the customer's conversation safely prioritized at the top of the queue. The system guarantees message persistence over AI drafting: even if the LLM fails, the customer message is saved to MongoDB. Rather than a blank screen or broken UI, the agent sees the message flagged with an actionable badge: `[AI Draft Unavailable: Manual Review Required]`. The draft input box remains editable, allowing the agent to type a manual reply, click "Approve", and resolve the ticket immediately. The customer never sees any internal failure.
 
 **How to find out what went wrong**:
-Every webhook event logs a structured JSON entry containing `timestamp`, `event_id`, `customer_id`, and `error_code` to server logs (CloudWatch/Render logs). We inspect the `failureReason` field recorded on the `AIDraft` collection and correlate the `event_id` in our error monitoring service (e.g. Sentry) to trace whether the issue was an expired LLM token, network timeout, database lock, or malformed payload.
+1. **Traceability via `event_id`**: Every webhook payload logs a structured JSON entry containing `timestamp`, `event_id`, `customer_id`, and `error_code` to server logs (CloudWatch/Render logs).
+2. **Database Audit**: The `AIDraft` collection records a `failureReason` field capturing the exact runtime error (e.g. LLM timeout, rate limit, or network drop).
+3. **Log Aggregator**: We filter production logs by `[Webhook Error]` and correlate the `event_id` in our error monitoring service (e.g. Sentry) to trace whether the issue was an expired LLM token, network latency, or malformed payload.
 
 ---
 
 ### Question 2: This now has to serve 20 brands, each with its own knowledge base and agents. What would you change first, and why?
 
 **What would change first**:
-First, **introduce multi-tenant tenant isolation with `brand_id` partitioning across all collections (`brands`, `brand_policies`, `agents`, `conversations`) and route requests dynamically**. 
+First, **introduce multi-tenant tenant isolation with `brand_id` partitioning across all database collections (`brands`, `brand_policies`, `agents`, `conversations`) and dynamic request routing**.
 
 **Why**:
-Currently, the knowledge base and agent authentication assume a single brand (`verdant-co`). Introducing `brand_id` enables tenant-level security so agents of Brand A can never read or respond to Brand B's customer tickets. Furthermore, migrating the static policy file to a indexed `brand_policies` collection (or tenant-partitioned vector store) allows each brand to independently upload, version, and update their policies without requiring code deployments.
+1. **Security & Data Isolation**: Agents assigned to Brand A must never view or accidentally reply to Brand B's customer tickets. Adding `brand_id` to agent JWT claims and enforcing tenant-level query filters ensures strict authorization boundaries.
+2. **Decoupled Knowledge Bases**: A static policy file cannot scale across 20 distinct brands with differing return windows and shipping partners. Decoupling policies into tenant-scoped database records or vector collections allows each brand to independently manage and update their policies in real time without requiring code redeployments.
