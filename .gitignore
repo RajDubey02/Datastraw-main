@@ -1,0 +1,19 @@
+# Environment & Keys
+.env
+.env.local
+.env.*
+!.env.example
+*.key
+key.md
+
+# Dependencies
+node_modules/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# System files
+.DS_Store
+Thumbs.db
